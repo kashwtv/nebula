@@ -20,6 +20,10 @@ public final class Schematic {
     public final String name;
     public final LinkedHashMap<BlockPos, BlockState> blocks = new LinkedHashMap<>();
     public int sx, sy, sz;
+    /** Block ids in the file this game doesn't know (and couldn't map), with counts. */
+    public final Map<String, Integer> unknown = new TreeMap<>();
+    /** Ids that were mapped to a vanilla block (e.g. diagonalfences:minecraft/spruce_fence -> minecraft:spruce_fence). */
+    public final Map<String, String> remapped = new TreeMap<>();
 
     public Schematic(String name) { this.name = name; }
 
@@ -28,7 +32,7 @@ public final class Schematic {
         blocks.put(new BlockPos(x, y, z), s);
     }
 
-    private void bounds() {
+    void bounds() {
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
         for (BlockPos p : blocks.keySet()) {
             minX = Math.min(minX, p.getX()); minY = Math.min(minY, p.getY()); minZ = Math.min(minZ, p.getZ());
@@ -79,20 +83,69 @@ public final class Schematic {
         }
         String base = fn.replaceFirst("\\.[^.]+$", "");
         Schematic s = new Schematic(base);
+        CUR.set(s);
+        try {
         String low = fn.toLowerCase(Locale.ROOT);
         if (low.endsWith(".litematic") || root.contains("Regions")) readLitematic(root, s);
         else if (root.contains("palette") && root.contains("blocks")) readVanilla(root, s);
         else readSponge(root, s);
+        } finally { CUR.remove(); }
         s.bounds();
         if (s.blocks.isEmpty()) throw new IOException("no blocks in " + fn);
         return s;
     }
 
+    private static final ThreadLocal<Schematic> CUR = new ThreadLocal<>();
+
+    /** Maps ids from mods that wrap vanilla blocks ("mod:minecraft/spruce_fence") to the vanilla block; records unknown ids. */
+    private static String resolveId(String id) {
+        var rl = net.minecraft.resources.ResourceLocation.tryParse(id);
+        if (rl != null && BuiltInRegistries.BLOCK.containsKey(rl)) return id;
+        if (rl != null && rl.getPath().contains("/")) {
+            String path = rl.getPath();
+            int i = path.indexOf('/');
+            var alt = net.minecraft.resources.ResourceLocation.tryParse(path.substring(0, i) + ":" + path.substring(i + 1));
+            if (alt == null || !BuiltInRegistries.BLOCK.containsKey(alt)) alt = net.minecraft.resources.ResourceLocation.tryParse("minecraft:" + path.substring(path.lastIndexOf('/') + 1));
+            if (alt != null && BuiltInRegistries.BLOCK.containsKey(alt)) {
+                Schematic s = CUR.get();
+                if (s != null) s.remapped.put(id, alt.toString());
+                return alt.toString();
+            }
+        }
+        return null;
+    }
+
     private static BlockState parseState(CompoundTag t) {
+        String id = t.getString("Name");
+        String res = resolveId(id);
+        if (res == null) { Schematic s = CUR.get(); if (s != null) s.unknown.merge(id, 0, Integer::sum); return Blocks.STRUCTURE_VOID.defaultBlockState(); }
+        if (!res.equals(id)) {
+            t = t.copy();
+            t.putString("Name", res);
+            // drop properties the vanilla block doesn't have (diagonal fence north_east etc.)
+            var block = BuiltInRegistries.BLOCK.get(new net.minecraft.resources.ResourceLocation(res));
+            if (t.contains("Properties")) {
+                CompoundTag props = t.getCompound("Properties").copy();
+                for (String k : new ArrayList<>(props.getAllKeys())) if (block.getStateDefinition().getProperty(k) == null) props.remove(k);
+                t.put("Properties", props);
+            }
+        }
         return NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(), t);
     }
 
     private static BlockState parseString(String s) {
+        String id0 = s.contains("[") ? s.substring(0, s.indexOf('[')) : s;
+        String res = resolveId(id0);
+        if (res == null) { Schematic sc = CUR.get(); if (sc != null) sc.unknown.merge(id0, 0, Integer::sum); return Blocks.STRUCTURE_VOID.defaultBlockState(); }
+        if (!res.equals(id0)) {
+            Block b = BuiltInRegistries.BLOCK.get(new net.minecraft.resources.ResourceLocation(res));
+            StringBuilder kept = new StringBuilder();
+            if (s.contains("[")) for (String kv : s.substring(s.indexOf('[') + 1, s.lastIndexOf(']')).split(",")) {
+                String k = kv.split("=")[0].trim();
+                if (b.getStateDefinition().getProperty(k) != null) kept.append(kept.length() == 0 ? "" : ",").append(kv.trim());
+            }
+            s = res + (kept.length() > 0 ? "[" + kept + "]" : "");
+        }
         try {
             return BlockStateParser.parseForBlock(BuiltInRegistries.BLOCK.asLookup(), s, false).blockState();
         } catch (Exception e) {

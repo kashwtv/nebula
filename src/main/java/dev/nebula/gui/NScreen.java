@@ -16,6 +16,17 @@ abstract class NScreen extends Screen {
     }
 
     protected final List<Btn> btns = new ArrayList<>();
+    /** Last frame's buttons by label (dev/test: click a button by name through the real mouse path). */
+    protected final java.util.Map<String, Btn> named = new java.util.LinkedHashMap<>();
+
+    /** Dev/test hook: clicks the button with this label at its centre, exactly like the mouse would. */
+    public boolean devClick(String label) {
+        Btn b = named.get(label);
+        if (b == null) return false;
+        return mouseClicked((b.x() + b.w() / 2) * s, (b.y() + b.h() / 2) * s, 0);
+    }
+
+    public java.util.Set<String> devLabels() { return new java.util.LinkedHashSet<>(named.keySet()); }
     protected float s = 1, vw, vh;
 
     protected NScreen(String title) { super(Component.literal(title)); }
@@ -28,6 +39,7 @@ abstract class NScreen extends Screen {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float pt) {
         btns.clear();
+        named.clear();
         s = R2D.uiScale();
         vw = width / s;
         vh = height / s;
@@ -66,7 +78,7 @@ abstract class NScreen extends Screen {
         boolean hov = mx >= x && mx < x + w && my >= y && my < y + h;
         R2D.rect(g, x, y, w, h, 4, on ? Theme.accent() : hov ? Theme.RAISED : Theme.TRACK);
         R2D.text(g, t, x + 5, y + 2.7f, on ? Theme.onAccent() : hov ? Theme.TEXT : Theme.MUTED);
-        if (r != null) btns.add(new Btn(x, y, w, h, r));
+        if (r != null) { Btn b = new Btn(x, y, w, h, r); btns.add(b); named.put(t, b); }
         return w;
     }
 
@@ -78,7 +90,7 @@ abstract class NScreen extends Screen {
         int bg = primary ? (hov ? 0xFFFFFFFF : Theme.accent()) : hov ? Theme.RAISED : Theme.TRACK;
         R2D.rect(g, x, y, w, h, 8, bg);
         R2D.text(g, t, x + (w - R2D.width(t)) / 2, y + 4f, primary ? Theme.onAccent() : hov ? Theme.TEXT : 0xFFC9C9CE);
-        if (r != null) btns.add(new Btn(x, y, w, h, r));
+        if (r != null) { Btn b = new Btn(x, y, w, h, r); btns.add(b); named.put(t, b); }
         return w;
     }
 

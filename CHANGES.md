@@ -13,6 +13,24 @@ Built against the unchanged gradle.properties: Minecraft 1.20.1, Forge 47.4.10, 
 - Client: 18 modules (14 new)
 - **Total: 200 modules (119 new, 81 existing)**
 
+## v4 (2026-10-15): Auto Build for survival
+
+- **Builds legitimately in survival.** Blocks come from your inventory. Anything in the main inventory gets swapped into the *Swap Slot*. It uses your real reach (4.5 in survival) and turns to look at each face it clicks. *Blocks Per Tick* and *Delay* set the speed.
+- **Correct block states.** Before each click it tries every face, click spot and look direction until the result is exactly the schematic's block: stair facing and top/bottom half, slab half, double slabs (two clicks), log/wood axis, trapdoor half, door hinge, chest pairs, wall vs standing torches, hanging lanterns, ladders, observers, furnaces and so on. Stairs and logs no longer just take the direction you're facing. *Fix States* (on by default) right-clicks afterwards to open trapdoors, doors and gates, and puts out campfires with a shovel.
+- **Build order.** It works from the bottom up and never places a floating block. It always clicks a real neighbour, and torches, carpets, lanterns and ladders wait until their support is there. It sneak-clicks when the only neighbour is a chest, table or trapdoor, so it doesn't open them.
+- **Helper Blocks** (on): when no neighbour gives the right state (for example a sideways log on bare floor), it puts down a throwaway cobble/dirt (or a spare full block), places against it, then mines it away again.
+- **Can't-place handling.** Fluids, technical blocks (barrier, command block, light...) and blocks with no item are skipped and listed. A block with nothing to click on and no helper option (truly floating) is skipped with a chat message after the build stalls on it.
+- **Obstructions.** *Clear Obstructions* (off) mines wrong blocks with the best tool in your inventory. Otherwise they're outlined red in the preview (yellow means right block, wrong state; grey means can't be placed).
+- **Materials.** Exact need/have/missing counts (double slabs count 2, door tops 0). When you run out it waits on those blocks, keeps placing everything else, and carries on by itself when you pick more up.
+- **Controls.** Start/Resume, Pause, Stop and Skip block, with progress % and ETA. Pause state and progress survive closing the screen. Chat commands: `.build start|pause|resume|stop|skip|mats|copy`.
+- **Screen.** It shows the full materials list for the selected schematic before you start: icon, name, need, have, missing, sorted by what's missing, scrollable, with total blocks, a "N blocks missing / You have everything" line, a "can't be placed" section, and **Copy** (copies the list to the clipboard). The status pill shows Building, Paused, Missing blocks, Move closer, Waiting or Done.
+- **Build HUD** (on): a compact overlay while building with %, count, ETA, status and the top 5 materials still needed (red when missing).
+- **Schematic loading.** Blocks from mods that wrap vanilla ones (for example `diagonalfences:minecraft/spruce_fence`) are mapped to the vanilla block instead of silently disappearing. Unknown ids are listed when loading.
+- **Removed:** *Air Place* from Auto Build. That's not something a survival player can do.
+- **Limits:** it doesn't walk. When nothing is in reach it says "Move closer" (HUD and action bar) and continues when you do. It can't waterlog blocks or place water/lava. Campfires can be put out but not lit.
+- Dev only: `run/nebula_abtest` (AbHarness) builds the presets, a state test litematic (plain, rot90+mirror, rot180), `kash1.litematic`, `kash2.schem`, an obstruction case and an out-of-materials case in a survival world, then compares the world block-for-block. It also clicks through every Auto Build screen button. The harness teleports the player when the build asks you to move closer, in place of walking.
+- **Test results (survival, real reach):** `kash1.litematic` 21x8x15, 943 blocks, 20 materials: 943/943 exact match including states (100%). `kash2.schem` 5x7x8, 189 blocks (183 placeable + 6 water): 183/183 placement-relevant (100%), 175/183 exact. The 8 differences are 5 campfires and 3 oak slabs that are waterlogged in the file, which can't be done without water. Block counts per type match an independent Python NBT parse for both files. Presets, the state test (plain, rot90+mirror, rot180) and the out-of-materials pause/resume all came out 100%. Selftest: 204 modules, 0 failures.
+
 ## v3 (2026-10-15)
 
 - **Structure Finder picker:** the panel (`.sf`) now has a tick list of every structure type for the current dimension on the left (All / None), **Search Selected** searches only the ticked ones, **Search All** does everything. Chat matches it: `.find <type>`, or several at once `.find village,stronghold,monument`.

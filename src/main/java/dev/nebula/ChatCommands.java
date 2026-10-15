@@ -52,17 +52,20 @@ public final class ChatCommands {
                 ab.retransform();
                 say("Mirror: " + ab.mirror.name().toLowerCase());
             }
-            case "start" -> { if (!ab.isEnabled()) ab.toggle(); }
-            case "stop" -> { if (ab.isEnabled()) ab.toggle(); }
+            case "start", "resume" -> ab.start();
+            case "pause" -> ab.pause(true);
+            case "stop" -> ab.stop();
+            case "skip" -> say(ab.skipFocus());
+            case "copy" -> { mc.keyboardHandler.setClipboard(ab.materialsText()); say("Materials list copied to clipboard."); }
             case "clear" -> { if (ab.isEnabled()) ab.toggle(); ab.loaded = ab.active = null; say("Cleared."); }
             case "mats", "materials" -> {
-                var m = ab.materials();
-                if (m.isEmpty()) { say("Nothing left to place."); return; }
-                say("Still needed: " + m.entrySet().stream().map(en -> en.getValue() + "x " + en.getKey().getDescription().getString()).collect(Collectors.joining(", ")));
+                var rows = ab.materialRows();
+                if (rows.isEmpty()) { say("Nothing loaded."); return; }
+                say("Need / have / missing: " + rows.stream().filter(r -> r.need() > 0).map(r -> r.item().getDescription().getString() + " " + r.need() + "/" + r.have() + (r.missing() > 0 ? " (-" + r.missing() + ")" : "")).collect(Collectors.joining(", ")));
             }
             case "preview" -> { ab.showWhileOff = !ab.showWhileOff; say("Preview while off: " + ab.showWhileOff); }
             case "ui", "gui" -> mc.tell(() -> mc.setScreen(new dev.nebula.gui.AutoBuildScreen()));
-            default -> say(".build [ui] | list | load <file|preset> | here [x y z] | rotate | mirror | start | stop | mats | preview | clear");
+            default -> say(".build [ui] | list | load <file|preset> | here [x y z] | rotate | mirror | start | pause | resume | stop | skip | mats | copy | preview | clear");
         }
     }
 

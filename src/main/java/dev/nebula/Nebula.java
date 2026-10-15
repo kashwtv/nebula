@@ -25,5 +25,6 @@ public final class Nebula {
         // Dev-only Structure Finder accuracy harness (compares against /locate); inert in the release jar.
         if (!FMLEnvironment.production) net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(dev.nebula.structure.LocateHarness.class);
         if (!FMLEnvironment.production && FMLEnvironment.dist == Dist.CLIENT) net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(dev.nebula.schem.BuildHarness.class);
+        if (!FMLEnvironment.production && FMLEnvironment.dist == Dist.CLIENT) net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(dev.nebula.schem.AbHarness.class);
     }
 }
