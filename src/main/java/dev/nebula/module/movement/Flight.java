@@ -20,13 +20,16 @@ import org.lwjgl.glfw.GLFW;
  * Your abilities and fly speed are put back exactly as they were when you turn it off.
  */
 public final class Flight extends Module {
-    public final ModeSetting mode = add(new ModeSetting("Mode", "Motion", "Vanilla", "Motion", "Glide", "Jetpack"));
+    public final ModeSetting mode = add(new ModeSetting("Mode", "Motion", "Vanilla", "Creative", "Motion", "Glide", "Jetpack"));
     public final NumberSetting speed = add(new NumberSetting("Speed", 0.1, 5, 1, 0.1));
     public final NumberSetting vertical = add(new NumberSetting("Vertical Speed", 0.1, 3, 0.6, 0.1));
     public final NumberSetting acceleration = add(new NumberSetting("Acceleration", 0.1, 1, 0.65, 0.05));
     public final NumberSetting glideFall = add(new NumberSetting("Glide Fall", 0.01, 0.3, 0.05, 0.01));
     public final NumberSetting thrust = add(new NumberSetting("Jetpack Thrust", 0.05, 0.5, 0.15, 0.01));
     public final NumberSetting sprintBoost = add(new NumberSetting("Sprint Boost", 1, 3, 1.5, 0.1, "x"));
+    public final NumberSetting vBoost = add(new NumberSetting("Vertical Boost", 1, 4, 2, 0.1, "x"));
+    public final BoolSetting smoothStop = add(new BoolSetting("Smooth Stop", true));
+    public final BoolSetting pauseInMenus = add(new BoolSetting("Pause In Menus", true));
     public final BoolSetting antiKick = add(new BoolSetting("Anti Kick", true));
     public final BoolSetting doubleTapOff = add(new BoolSetting("Double-Tap Jump Off", true));
     public final BoolSetting stopOnDisable = add(new BoolSetting("Stop On Disable", true));
@@ -58,7 +61,7 @@ public final class Flight extends Module {
             savedFlying = p.getAbilities().flying;
             savedFlySpeed = p.getAbilities().getFlyingSpeed();
             saved = true;
-            if (mode.is("Vanilla")) {
+            if (mode.is("Vanilla") || mode.is("Creative")) {
                 p.getAbilities().mayfly = true;
                 p.getAbilities().flying = true;
                 p.onUpdateAbilities();
@@ -82,6 +85,11 @@ public final class Flight extends Module {
         }
     }
 
+    /** Vertical boost: sprint makes climbing/descending faster. */
+    private double vb() {
+        return mc().options.keySprint.isDown() ? vBoost.value : 1.0;
+    }
+
     private double boost() {
         return mc().options.keySprint.isDown() ? sprintBoost.value : 1.0;
     }
@@ -99,6 +107,30 @@ public final class Flight extends Module {
         if (p == null) return;
         ticks++;
         boolean kickTick = antiKick.get() && ticks % 40 == 0;
+        // menus open: hover in place, ignore movement keys
+        if (pauseInMenus.get() && mc().screen != null) {
+            vel = Vec3.ZERO;
+            if (!mode.is("Vanilla") && !mode.is("Creative")) p.setDeltaMovement(0, mode.is("Glide") ? -glideFall.value : 0, 0);
+            else if (p.getAbilities().flying) p.setDeltaMovement(0, 0, 0);
+            p.fallDistance = 0;
+            return;
+        }
+        if (mode.is("Creative")) {
+            p.getAbilities().mayfly = true;
+            if (!p.getAbilities().flying && !p.onGround()) p.getAbilities().flying = true;
+            p.getAbilities().setFlyingSpeed((float) (speed.value * boost() * 0.05));
+            // creative-style: no drift, stop when keys are released; vertical boost while sprinting
+            boolean moving = p.input.forwardImpulse != 0 || p.input.leftImpulse != 0;
+            Vec3 v = p.getDeltaMovement();
+            double vy = v.y;
+            if (p.input.jumping) vy = vertical.value * vb();
+            else if (p.input.shiftKeyDown) vy = -vertical.value * vb();
+            else vy = kickTick ? -0.04 : 0;
+            Vec3 h = moving ? horizontal(speed.value * 0.5 * boost()) : Vec3.ZERO;
+            p.setDeltaMovement(h.x, vy, h.z);
+            p.fallDistance = 0;
+            return;
+        }
         if (mode.is("Vanilla")) {
             p.getAbilities().mayfly = true;
             if (!p.getAbilities().flying && !p.onGround()) p.getAbilities().flying = true;
@@ -113,7 +145,7 @@ public final class Flight extends Module {
         switch (mode.get()) {
             case "Glide" -> {
                 Vec3 h = horizontal(speed.value * 0.5 * boost());
-                double ty = in.shiftKeyDown ? -vertical.value : -glideFall.value;
+                double ty = in.shiftKeyDown ? -vertical.value * vb() : -glideFall.value;
                 target = new Vec3(h.x, ty, h.z);
             }
             case "Jetpack" -> {
@@ -128,11 +160,14 @@ public final class Flight extends Module {
             default -> { // Motion
                 Vec3 h = horizontal(speed.value * 0.5 * boost());
                 double ty = 0;
-                if (in.jumping) ty += vertical.value;
-                if (in.shiftKeyDown) ty -= vertical.value;
+                if (in.jumping) ty += vertical.value * vb();
+                if (in.shiftKeyDown) ty -= vertical.value * vb();
                 target = new Vec3(h.x, ty, h.z);
             }
         }
+        // with Smooth Stop off, letting go of the keys stops you dead instead of easing out
+        boolean idle = in.forwardImpulse == 0 && in.leftImpulse == 0;
+        if (!smoothStop.get() && idle) vel = new Vec3(0, vel.y, 0);
         vel = vel.add(target.subtract(vel).scale(k));
         double vy = vel.y;
         if (kickTick && vy > -0.04 && !in.jumping) vy = -0.04;

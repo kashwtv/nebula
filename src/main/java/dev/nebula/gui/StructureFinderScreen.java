@@ -34,7 +34,13 @@ public final class StructureFinderScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Overworld"), b -> { dim = Level.OVERWORLD; scroll = 0; }).bounds(x, 22, 70, 18).build());
         addRenderableWidget(Button.builder(Component.literal("Nether"), b -> { dim = Level.NETHER; scroll = 0; }).bounds(x + 74, 22, 60, 18).build());
         addRenderableWidget(Button.builder(Component.literal("End"), b -> { dim = Level.END; scroll = 0; }).bounds(x + 138, 22, 44, 18).build());
-        addRenderableWidget(Button.builder(Component.literal("Search"), b -> StructureFinder.get().search(dim, null, null)).bounds(x + 186, 22, 60, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("Search All"), b -> StructureFinder.get().search(dim, (StructureTypes.Type) null, null)).bounds(x + 186, 22, 60, 18).build());
+        int lx = x - 130;
+        addRenderableWidget(Button.builder(Component.literal("Search Selected"), b -> searchSelected()).bounds(lx, 22, 122, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("All"), b -> StructureTypes.forDim(dim).forEach(t -> StructureFinder.get().selected.add(t.id()))).bounds(lx, 42, 40, 14).build());
+        addRenderableWidget(Button.builder(Component.literal("None"), b -> StructureTypes.forDim(dim).forEach(t -> StructureFinder.get().selected.remove(t.id()))).bounds(lx + 42, 42, 40, 14).build());
+        addRenderableWidget(Button.builder(Component.literal("Portal Rm"), b -> StructureFinder.get().findPortalRoom()).bounds(lx + 84, 42, 38, 14)
+                .tooltip(net.minecraft.client.gui.components.Tooltip.create(Component.literal("End portal room inside the nearest stronghold"))).build());
         boolean sp = minecraft.hasSingleplayerServer();
         seedBox = new EditBox(font, x + 250, 22, 70, 18, Component.literal("seed"));
         seedBox.setHint(Component.literal(sp ? "SP: auto" : "seed"));
@@ -42,6 +48,15 @@ public final class StructureFinderScreen extends Screen {
         seedBox.setEditable(!sp);
         seedBox.setResponder(s -> { if (!s.isBlank()) StructureFinder.seed = dev.nebula.structure.SeedWorld.parseSeed(s); });
         addRenderableWidget(seedBox);
+    }
+
+    private final List<Object[]> checks = new ArrayList<>();
+
+    private void searchSelected() {
+        var sf = StructureFinder.get();
+        var pick = StructureTypes.forDim(dim).stream().filter(t -> sf.selected.contains(t.id())).toList();
+        if (pick.isEmpty()) { sf.status = "Tick at least one structure on the left"; return; }
+        sf.search(dim, pick, null, false);
     }
 
     @Override
@@ -70,16 +85,41 @@ public final class StructureFinderScreen extends Screen {
                 y += ROW;
             }
         }
-        g.drawString(font, "Click a row to pin its beam. Chat: .find <type> [n], .find list, .seed <seed>", x, height - 12, 0xFF888888);
+        // left: selectable structure list (multi-select)
+        checks.clear();
+        int lx = x - 130, ly = 60;
+        g.fill(lx - 2, ly - 2, lx + 124, height - 16, 0x66000000);
+        for (var t : StructureTypes.forDim(dim)) {
+            if (ly > height - 26) break;
+            boolean on = sf.selected.contains(t.id());
+            boolean hov = mx >= lx && mx < lx + 122 && my >= ly - 1 && my < ly + ROW - 1;
+            g.fill(lx, ly, lx + 8, ly + 8, on ? t.color() : 0xFF333333);
+            g.renderOutline(lx, ly, 8, 8, 0xFFAAAAAA);
+            g.drawString(font, t.name(), lx + 12, ly, hov ? 0xFFFFFFFF : on ? 0xFFE0E0E0 : 0xFF999999);
+            checks.add(new Object[]{ly, t.id()});
+            ly += ROW;
+        }
+        if (sf.portalInfo != null && dim == Level.OVERWORLD) g.drawString(font, sf.portalInfo, x, height - 24, 0xFF33FF66);
+        g.drawString(font, "Tick types, Search Selected. Click a row to pin its beam. Chat: .find <type> [n], .find list, .seed <seed>", x, height - 12, 0xFF888888);
         super.render(g, mx, my, pt);
     }
 
     @Override
     public boolean mouseClicked(double mx, double my, int b) {
         if (super.mouseClicked(mx, my, b)) return true;
+        int lx = width / 2 - 290;
+        if (mx >= lx && mx < lx + 122) for (Object[] c : checks) {
+            int y = (int) c[0];
+            if (my >= y - 1 && my < y + ROW - 1) {
+                var sel = StructureFinder.get().selected;
+                String id = (String) c[1];
+                if (!sel.remove(id)) sel.add(id);
+                return true;
+            }
+        }
         for (Object[] r : rows) {
             int y = (int) r[0];
-            if (my >= y - 1 && my < y + ROW - 1) {
+            if (mx >= width / 2 - 160 && my >= y - 1 && my < y + ROW - 1) {
                 var key = StructureFinder.pinKey(dim, (StructureSearch.Hit) r[1]);
                 var pins = StructureFinder.get().pinned;
                 if (!pins.remove(key)) pins.add(key);

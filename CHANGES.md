@@ -13,6 +13,28 @@ Built against the unchanged gradle.properties: Minecraft 1.20.1, Forge 47.4.10, 
 - Client: 18 modules (14 new)
 - **Total: 200 modules (119 new, 81 existing)**
 
+## v3 (2026-10-15)
+
+- **Structure Finder picker:** the panel (`.sf`) now has a tick list of every structure type for the current dimension on the left (All / None), **Search Selected** searches only the ticked ones, **Search All** does everything. Chat matches it: `.find <type>`, or several at once `.find village,stronghold,monument`.
+- **End portal room (Structure Finder):** after a stronghold is found (setting *Find Portal Room*, on by default), or with `.portal` / the *Portal Rm* button, it finds the stronghold's portal room and reports it separately: `Stronghold (start): X ~ Z` and `End PORTAL ROOM: X Y Z (12 frames, N with eyes)`. Green beam + "End Portal Room" label in-world.
+  - Singleplayer: reads the stronghold's structure start from the world generator, takes its PortalRoom piece and counts the End Portal Frame blocks inside it (exact).
+  - Multiplayer: spirals out over the chunks your client has loaded around the stronghold start, looking for End Portal Frames. If none are loaded yet it tells you to go near the stronghold and run `.portal` again.
+- **Flight:** new **Creative** mode (no drift, stops the moment you let go), **Vertical Boost** (sprint multiplies up/down speed), **Smooth Stop** toggle, **Pause In Menus** (hovers in place while a screen is open). Flight now switches off on logout and gives your abilities back. No anticheat bypass.
+- **Auto Build (new, World):** builds schematics block by block from your inventory.
+  - Formats: Litematica `.litematic` (all regions), WorldEdit/Sponge `.schem` (v1-v3), vanilla structure-block `.nbt`. Old MCEdit numeric `.schematic` isn't supported (re-save as `.schem`).
+  - Presets: `cobble_hut`, `nether_portal`, `pillar`, `pixel_heart`, `bridge`.
+  - Settings: Blocks Per Tick (1-4), Delay (ticks), Swap Slot (where blocks from the main inventory are swapped in), Ghost Preview, Air Place, Pause In Menus.
+  - Builds bottom-up, nearest first, only within reach. Skips spots where a different block is in the way (shown red in the preview), warns once per missing item, turns itself off when finished. Directional blocks (stairs, logs) take the direction you're facing when placed.
+  - **How to load a schematic:**
+    1. Put the file in `.minecraft/schematics/` (CurseForge: `<instance>/schematics/`; Litematica already saves there).
+    2. In game: `.build list` shows files and presets.
+    3. `.build load myhouse.litematic` (or `.build load preset:cobble_hut`; a name prefix is enough). The ghost preview appears 2 blocks in front of you.
+    4. Move it: stand where you want it and `.build here` (or `.build here x y z`). `.build rotate` (90° steps), `.build mirror`.
+    5. `.build mats` lists the blocks you still need. Put them in your inventory.
+    6. `.build start` (or turn on Auto Build) / `.build stop`. `.build clear` unloads.
+- **Anti Lava (new, Player):** no fire/lava damage in singleplayer or a world you host (the integrated server cancels fire-type damage to you). On someone else's server damage is decided by the server, so there it only hides the fire overlay/burning and makes lava swimming easier (Lava Swim, Rise Speed: jump to rise, sneak to sink, no fast sinking).
+- Dev only: `run/nebula_buildtest` runs BuildHarness (portal room vs real frames, loader round trips, AutoBuild placing obsidian, Flight modes, Anti Lava). Inert in the release jar.
+
 ## v2 (2026-10-15)
 
 - **Structure Finder (new, World):** nearest N of every vanilla 1.20.1 structure. Overworld: stronghold, village (plains/desert/savanna/snowy/taiga), ocean monument, woodland mansion, ancient city, desert & jungle temple, igloo, swamp hut, pillager outpost, shipwreck (+beached), ocean ruins (warm/cold), buried treasure, mineshaft (+mesa), trail ruins, ruined portal (all 6 variants). Nether: fortress, bastion remnant, nether ruined portal, nether fossil. End: end city. (Trial chambers are 1.21, not included.)

@@ -50,7 +50,8 @@ public final class ClientEvents {
     private static final Class<?>[] KEY_HOLDERS = {
             dev.nebula.module.movement.AutoWalk.class, dev.nebula.module.player.Copycat.class, dev.nebula.module.player.Twerk.class,
             dev.nebula.module.player.AutoMine.class, dev.nebula.module.player.Dance.class, dev.nebula.module.combat.AutoShield.class,
-            dev.nebula.module.player.AutoRightClick.class};
+            dev.nebula.module.player.AutoRightClick.class,
+            dev.nebula.module.movement.Flight.class, dev.nebula.module.world.AutoBuild.class};
 
     /** Leaving a world: turn off key-holding modules and release every key we may have pressed. */
     @SubscribeEvent

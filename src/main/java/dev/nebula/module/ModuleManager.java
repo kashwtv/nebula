@@ -84,6 +84,7 @@ public final class ModuleManager {
         add(new StorageFinder());
         add(new PortalFinder());
         add(new StructureFinder());
+        add(new AutoBuild());
         add(new Freecam());
         add(new Breadcrumbs());
         add(new Ambience());
@@ -94,6 +95,7 @@ public final class ModuleManager {
         add(new AutoTool());
         add(new AutoArmor());
         add(new AutoEat());
+        add(new AntiLava());
         add(new ChestStealer());
         add(new InventoryMove());
         add(new AutoRespawn());
