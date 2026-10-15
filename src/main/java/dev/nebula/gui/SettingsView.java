@@ -2,6 +2,7 @@ package dev.nebula.gui;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.nebula.module.Module;
+import dev.nebula.module.setting.ActionSetting;
 import dev.nebula.module.setting.BoolSetting;
 import dev.nebula.module.setting.ColorSetting;
 import dev.nebula.module.setting.ModeSetting;
@@ -20,7 +21,7 @@ import java.util.List;
 final class SettingsView {
     static final float H_BOOL = 17, H_MODE = 17, H_NUM = 24, H_COLOR = 28, H_BIND = 18;
 
-    enum Kind { BOOL, NUMBER, MODE_PREV, MODE_NEXT, HUE, THEME, RGB, BIND, BIND_MODE, CHIP, RESET }
+    enum Kind { BOOL, NUMBER, MODE_PREV, MODE_NEXT, HUE, THEME, RGB, BIND, BIND_MODE, CHIP, RESET, ACTION }
 
     record Hit(float x, float y, float w, float h, Kind kind, Setting setting, String opt) {
         boolean contains(float mx, float my) {
@@ -48,6 +49,7 @@ final class SettingsView {
 
     static float height(Setting s, float w) {
         if (s instanceof MultiSetting ms) return 15 + chipRows(ms, w) * (CHIP_H + CHIP_GAP) + 3;
+        if (s instanceof ActionSetting) return 20;
         if (s instanceof NumberSetting) return H_NUM;
         if (s instanceof ColorSetting) return H_COLOR;
         if (s instanceof ModeSetting) return H_MODE;
@@ -130,6 +132,14 @@ final class SettingsView {
                 hit(cx, cy, cw, CHIP_H, Kind.CHIP, s, o);
                 cx += cw + CHIP_GAP;
             }
+            return;
+        }
+        if (s instanceof ActionSetting a) {
+            float bw = R2D.width(a.name) + 16, by = sy + 3;
+            boolean bh = mx >= x && mx < x + bw && my >= by && my < by + 14 && my >= clipTop && my < clipBottom;
+            R2D.rect(g, x, by, bw, 14, 7, bh ? Theme.TEXT : Theme.TRACK);
+            R2D.text(g, a.name, x + 8, by + 3.5f, bh ? Theme.ON_ACCENT : Theme.TEXT);
+            hit(x, by, bw, 14, Kind.ACTION, s);
             return;
         }
         if (s instanceof BoolSetting b) {
@@ -275,6 +285,10 @@ final class SettingsView {
                     MultiSetting ms = (MultiSetting) h.setting();
                     ms.toggle(h.opt());
                     gui.click(ms.has(h.opt()));
+                }
+                case ACTION -> {
+                    gui.click(true);
+                    ((ActionSetting) h.setting()).action.run();
                 }
                 case RESET -> {
                     m.resetSettings();

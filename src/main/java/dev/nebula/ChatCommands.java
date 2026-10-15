@@ -24,7 +24,7 @@ public final class ChatCommands {
     private static void build(String[] a, String msg) {
         var ab = dev.nebula.module.world.AutoBuild.get();
         var mc = Minecraft.getInstance();
-        String sub = a.length > 1 ? a[1].toLowerCase() : "help";
+        String sub = a.length > 1 ? a[1].toLowerCase() : "ui";
         switch (sub) {
             case "list" -> {
                 var f = dev.nebula.module.world.AutoBuild.files();
@@ -61,7 +61,8 @@ public final class ChatCommands {
                 say("Still needed: " + m.entrySet().stream().map(en -> en.getValue() + "x " + en.getKey().getDescription().getString()).collect(Collectors.joining(", ")));
             }
             case "preview" -> { ab.showWhileOff = !ab.showWhileOff; say("Preview while off: " + ab.showWhileOff); }
-            default -> say(".build list | load <file|preset> | here [x y z] | rotate | mirror | start | stop | mats | preview | clear");
+            case "ui", "gui" -> mc.tell(() -> mc.setScreen(new dev.nebula.gui.AutoBuildScreen()));
+            default -> say(".build [ui] | list | load <file|preset> | here [x y z] | rotate | mirror | start | stop | mats | preview | clear");
         }
     }
 

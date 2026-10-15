@@ -96,6 +96,7 @@ public final class ModuleManager {
         add(new AutoArmor());
         add(new AutoEat());
         add(new AntiLava());
+        add(new dev.nebula.module.player.AntiHunger());
         add(new ChestStealer());
         add(new InventoryMove());
         add(new AutoRespawn());

@@ -58,6 +58,11 @@ public final class DevAutomation {
         try {
             mc.setScreen(new ClickGui());
             Nebula.LOG.info("SELFTEST ClickGui opened");
+            mc.setScreen(new dev.nebula.gui.StructureFinderScreen());
+            mc.setScreen(new dev.nebula.gui.AutoBuildScreen());
+            mc.setScreen(new ClickGui());
+            Nebula.LOG.info("SELFTEST StructureFinder/AutoBuild screens opened");
+            if (ModuleManager.MODULES.stream().noneMatch(m -> m.name.equals("Anti Hunger"))) { fails++; Nebula.LOG.error("SELFTEST Anti Hunger missing"); }
         } catch (Throwable t) {
             fails++;
             Nebula.LOG.error("SELFTEST ClickGui failed", t);
@@ -168,6 +173,11 @@ public final class DevAutomation {
                     mc.screen.mouseReleased(x / gs, y / gs, b);
                 }
             }
+            case "quit" -> mc.stop();
+            case "resize" -> { String[] a = arg.split(" "); GLFW.glfwSetWindowSize(win, Integer.parseInt(a[0]), Integer.parseInt(a[1])); }
+            case "screen" -> mc.setScreen(arg.equals("build") ? new dev.nebula.gui.AutoBuildScreen() : new dev.nebula.gui.StructureFinderScreen());
+            case "abload" -> Nebula.LOG.info("dev: {}", dev.nebula.module.world.AutoBuild.get().load(arg));
+            case "sfsearch" -> dev.nebula.module.world.StructureFinder.get().searchSelected(mc.player.level().dimension());
             case "log" -> Nebula.LOG.info("dev: {}", arg);
             case "info" -> { Module m = find(arg); Nebula.LOG.info("dev: info {} on={} suffix={}", arg, m != null && m.isEnabled(), m == null ? "?" : m.suffix()); }
             case "pos" -> Nebula.LOG.info("dev: pos {} y={} inWater={} onGround={}", arg, String.format("%.2f", mc.player.getY()), mc.player.isInWater(), mc.player.onGround());

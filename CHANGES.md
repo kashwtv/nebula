@@ -282,3 +282,11 @@ Built against the unchanged gradle.properties: Minecraft 1.20.1, Forge 47.4.10, 
 - ClientEvents: on ClientPlayerNetworkEvent.LoggingOut, Auto Walk, Copycat, Twerk, Auto Mine, Dance, Auto Shield and Auto Right Click are switched off (unless bound as "Always") and KeyMapping.releaseAll() releases every held key.
 - Twerk, Dance and Copycat now pause and let go of their keys while a menu is open. Auto Mine, Auto Walk and Auto Shield already did this.
 - The dev self-test now also checks the logout release.
+
+## Structure Finder UI, Auto Build UI, Anti Hunger
+- New `ActionSetting` (pill button in Click GUI settings).
+- Structure Finder settings: "Structures" chip multi-select (same chip renderer as Block Finder's Blocks, "N selected"), Range slider, Results slider, Search Now / Open Panel buttons. Selected chips drive what is searched and which beams render; the "Portal Room" chip replaces the old "Find Portal Room" toggle.
+- Structure Finder panel (`.sf`) rebuilt in Nebula's card style: chip picker + sliders left, dimension chips + results right (click a row to pin its beam), styled seed field.
+- New Auto Build screen (`.build`, keybind B "Open Auto Build", or the module's "Open UI" button): schematic library (.minecraft/schematics + presets), Open folder, Add schematic (native TinyFileDialogs picker, copies the file in), rotatable/zoomable isometric preview with size and block count, materials have/need, Place Here / Rotate / Mirror / Preview in world / Start / Stop, progress bar.
+- New Anti Hunger (Player): singleplayer/hosted worlds keep food, saturation full on the integrated server. On other servers hunger is server-controlled; the only option is an honest "No Sprint On Servers" toggle (nothing spoofed).
+- Self-test also opens both new screens and checks Anti Hunger is registered. Dev commands: screen sf|build, abload, sfsearch, resize, quit.

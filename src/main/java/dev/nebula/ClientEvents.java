@@ -33,6 +33,9 @@ public final class ClientEvents {
         while (NebulaClient.OPEN_HUD.consumeClick()) {
             if (mc.screen == null && mc.player != null) mc.setScreen(new HudEditor());
         }
+        while (NebulaClient.OPEN_BUILD.consumeClick()) {
+            if (mc.screen == null && mc.player != null) mc.setScreen(new dev.nebula.gui.AutoBuildScreen());
+        }
         ConfigIO.autosave();
         for (Module m : ModuleManager.MODULES) {
             try {

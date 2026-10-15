@@ -21,6 +21,7 @@ public final class NebulaClient {
     public static final String CATEGORY = "key.categories.nebula";
     public static final KeyMapping OPEN_GUI = new KeyMapping("key.nebula.open", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, CATEGORY);
     public static final KeyMapping OPEN_HUD = new KeyMapping("key.nebula.hud", InputConstants.UNKNOWN.getValue(), CATEGORY);
+    public static final KeyMapping OPEN_BUILD = new KeyMapping("key.nebula.autobuild", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, CATEGORY);
     public static final KeyMapping ZOOM = new KeyMapping("key.nebula.zoom", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_Z, CATEGORY);
 
     private NebulaClient() {}
@@ -49,6 +50,7 @@ public final class NebulaClient {
         e.register(OPEN_GUI);
         e.register(OPEN_HUD);
         e.register(ZOOM);
+        e.register(OPEN_BUILD);
     }
 
     private static void onOverlays(RegisterGuiOverlaysEvent e) {

@@ -38,6 +38,10 @@ public final class AutoBuild extends Module {
     public final BoolSetting preview = add(new BoolSetting("Ghost Preview", true));
     public final BoolSetting airPlace = add(new BoolSetting("Air Place", false));
     public final BoolSetting pauseInMenus = add(new BoolSetting("Pause In Menus", true));
+    public final dev.nebula.module.setting.ActionSetting openUi = add(new dev.nebula.module.setting.ActionSetting("Open UI",
+            () -> mc().tell(() -> mc().setScreen(new dev.nebula.gui.AutoBuildScreen()))));
+    /** Name of the file/preset currently loaded (for the UI). */
+    public String loadedKey;
 
     public Schematic loaded;   // as loaded
     public Schematic active;   // after rotate/mirror
@@ -99,6 +103,7 @@ public final class AutoBuild extends Module {
             try { s = Schematic.load(f); } catch (Exception e) { return "Couldn't read " + f.getFileName() + ": " + e.getMessage(); }
         }
         loaded = s;
+        loadedKey = arg;
         rotation = Rotation.NONE;
         mirror = Mirror.NONE;
         active = s;
@@ -112,6 +117,23 @@ public final class AutoBuild extends Module {
 
     static String fmt(BlockPos p) {
         return p == null ? "-" : p.getX() + " " + p.getY() + " " + p.getZ();
+    }
+
+    /** {placed, total} for the progress bar. */
+    public int[] progress() {
+        if (active == null) return new int[]{0, 0};
+        int total = active.blocks.size(), done = 0;
+        if (origin != null && mc().level != null)
+            for (var e : active.blocks.entrySet()) if (mc().level.getBlockState(origin.offset(e.getKey())).is(e.getValue().getBlock())) done++;
+        return new int[]{done, total};
+    }
+
+    /** Every item the build uses, with the total count. */
+    public Map<Item, Integer> totals() {
+        Map<Item, Integer> m = new LinkedHashMap<>();
+        if (active == null) return m;
+        for (var st : active.blocks.values()) { Item it = st.getBlock().asItem(); if (it != Items.AIR) m.merge(it, 1, Integer::sum); }
+        return m;
     }
 
     /** Remaining blocks still to place, with how many of each item you need. */
@@ -144,7 +166,7 @@ public final class AutoBuild extends Module {
         var p = mc().player;
         var lvl = mc().level;
         if (p == null || lvl == null || active == null || origin == null) return;
-        if (pauseInMenus.get() && mc().screen != null) return;
+        if (pauseInMenus.get() && mc().screen != null && !(mc().screen instanceof dev.nebula.gui.AutoBuildScreen)) return;
         if (wait-- > 0) return;
         wait = delay.i();
         Vec3 eye = p.getEyePosition();

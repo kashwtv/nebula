@@ -28,13 +28,34 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Multiplayer: rebuilds the vanilla default world from a seed you enter with ".seed <seed>".
  */
 public final class StructureFinder extends Module {
-    public final NumberSetting count = add(new NumberSetting("Per Type", 1, 10, 3, 1));
-    public final NumberSetting radius = add(new NumberSetting("Search Rings", 8, 100, 40, 1));
+    /** Chip label -> finder type ids (Portal Room = room inside the stronghold). */
+    public static final LinkedHashMap<String, List<String>> CHIPS = new LinkedHashMap<>();
+    static {
+        CHIPS.put("Fortress", List.of("fortress")); CHIPS.put("Bastion", List.of("bastion_remnant"));
+        CHIPS.put("Stronghold", List.of("stronghold")); CHIPS.put("Portal Room", List.of("stronghold"));
+        CHIPS.put("End City", List.of("end_city")); CHIPS.put("Village", List.of("village"));
+        CHIPS.put("Monument", List.of("monument")); CHIPS.put("Mansion", List.of("mansion"));
+        CHIPS.put("Ancient City", List.of("ancient_city")); CHIPS.put("Desert Temple", List.of("desert_pyramid"));
+        CHIPS.put("Jungle Temple", List.of("jungle_pyramid")); CHIPS.put("Igloo", List.of("igloo"));
+        CHIPS.put("Swamp Hut", List.of("swamp_hut")); CHIPS.put("Outpost", List.of("pillager_outpost"));
+        CHIPS.put("Shipwreck", List.of("shipwreck")); CHIPS.put("Ocean Ruin", List.of("ocean_ruin"));
+        CHIPS.put("Buried Treasure", List.of("buried_treasure")); CHIPS.put("Mineshaft", List.of("mineshaft"));
+        CHIPS.put("Ruined Portal", List.of("ruined_portal", "ruined_portal_nether")); CHIPS.put("Nether Fossil", List.of("nether_fossil"));
+        CHIPS.put("Trail Ruins", List.of("trail_ruins"));
+    }
+    public final dev.nebula.module.setting.MultiSetting structures = add(new dev.nebula.module.setting.MultiSetting("Structures",
+            CHIPS.keySet().toArray(new String[0]), "Fortress", "Bastion", "Stronghold", "Portal Room", "End City", "Village"));
+    public final NumberSetting radius = add(new NumberSetting("Range", 8, 100, 40, 1, " rings"));
+    public final NumberSetting count = add(new NumberSetting("Results", 1, 10, 3, 1));
+    public final dev.nebula.module.setting.ActionSetting searchNow = add(new dev.nebula.module.setting.ActionSetting("Search Now", () -> {
+        var pl = mc().player; if (pl != null) searchSelected(pl.level().dimension()); }));
+    public final dev.nebula.module.setting.ActionSetting openPanel = add(new dev.nebula.module.setting.ActionSetting("Open Panel",
+            () -> mc().tell(() -> mc().setScreen(new dev.nebula.gui.StructureFinderScreen()))));
     public final BoolSetting beams = add(new BoolSetting("Beams", true));
     public final BoolSetting tracers = add(new BoolSetting("Tracers", false));
     public final BoolSetting onlyNearest = add(new BoolSetting("Render Nearest Only", true));
     public final BoolSetting autoRefresh = add(new BoolSetting("Auto Refresh", true));
-    public final BoolSetting portalRoom = add(new BoolSetting("Find Portal Room", true));
+
 
     /** Last found end portal room (frame centre), separate from the stronghold's own result. */
     public volatile net.minecraft.core.BlockPos portalPos;
@@ -72,7 +93,7 @@ public final class StructureFinder extends Module {
 
     @Override
     public void onEnable() {
-        if (mc().player != null) search(mc().player.level().dimension(), (StructureTypes.Type) null, null);
+        if (mc().player != null) searchSelected(mc().player.level().dimension());
     }
 
     @Override
@@ -81,7 +102,7 @@ public final class StructureFinder extends Module {
         if (p == null || busy || !autoRefresh.get()) return;
         var dim = p.level().dimension();
         Vec3 o = origins.get(dim);
-        if (o != null && o.distanceTo(p.position()) > 512) search(dim, (StructureTypes.Type) null, null);
+        if (o != null && o.distanceTo(p.position()) > 512) searchSelected(dim);
     }
 
     private static void chat(Component c) {
@@ -97,8 +118,24 @@ public final class StructureFinder extends Module {
         search(dim, only != null ? List.of(only) : null, n, only != null || n != null);
     }
 
-    /** Type ids ticked in the panel (empty = none ticked). */
-    public final Set<String> selected = ConcurrentHashMap.newKeySet();
+    /** Type ids picked with the Structures chips. */
+    public Set<String> selectedIds() {
+        Set<String> out = new LinkedHashSet<>();
+        for (String c : structures.selected) out.addAll(CHIPS.getOrDefault(c, List.of()));
+        return out;
+    }
+
+    public List<StructureTypes.Type> selectedTypes(ResourceKey<Level> dim) {
+        var ids = selectedIds();
+        return StructureTypes.forDim(dim).stream().filter(t -> ids.contains(t.id())).toList();
+    }
+
+    /** Search what the chips pick in this dimension. */
+    public void searchSelected(ResourceKey<Level> dim) {
+        var pick = selectedTypes(dim);
+        if (pick.isEmpty()) { status = "No selected structures exist in " + dim.location().getPath(); Notifications.push("Structure Finder", status, false); return; }
+        search(dim, pick, null, false);
+    }
 
     /** Search only the given types (null = every type in the dimension). */
     public void search(ResourceKey<Level> dim, List<StructureTypes.Type> only, Integer n, boolean print) {
@@ -158,7 +195,7 @@ public final class StructureFinder extends Module {
                 int total = res.values().stream().mapToInt(List::size).sum();
                 status = "Found " + total + " in " + dim.location().getPath() + " (" + mode + ")";
                 if (print) printResults(dim, types);
-                if (dim == Level.OVERWORLD && portalRoom.get() && !res.getOrDefault("stronghold", List.of()).isEmpty()
+                if (dim == Level.OVERWORLD && structures.has("Portal Room") && !res.getOrDefault("stronghold", List.of()).isEmpty()
                         && types.stream().anyMatch(t -> t.id().equals("stronghold"))) WORKER.submit(() -> portalTask(false));
                 else Notifications.push("Structure Finder", status, true);
             } catch (Throwable ex) {
@@ -201,7 +238,7 @@ public final class StructureFinder extends Module {
         var cam = e.getCamera().getPosition();
         var m = e.getPoseStack().last().pose();
         List<Object[]> draw = new ArrayList<>();
-        for (var t : StructureTypes.forDim(dim)) {
+        for (var t : selectedTypes(dim)) {
             var hits = res.getOrDefault(t.id(), List.of());
             for (int i = 0; i < hits.size(); i++) {
                 var h = hits.get(i);
@@ -225,7 +262,7 @@ public final class StructureFinder extends Module {
                 World3D.v(b, m, x, p.getY() - cam.y, z, t.color(), 0.9f);
             }
         }
-        var pp = portalPos;
+        var pp = structures.has("Portal Room") ? portalPos : null;
         if (pp != null && dim == Level.OVERWORLD) {
             double x = pp.getX() + 0.5 - cam.x, z = pp.getZ() + 0.5 - cam.z;
             World3D.v(b, m, x, pp.getY() - cam.y, z, 0xFF33FF66, 0.9f);
@@ -256,7 +293,7 @@ public final class StructureFinder extends Module {
         if (ow == null || ow.getOrDefault("stronghold", List.of()).isEmpty()) {
             var t = StructureTypes.byId("stronghold");
             chat(Component.literal("[Structure Finder] Finding the nearest stronghold first...").withStyle(ChatFormatting.GRAY));
-            boolean was = portalRoom.get();
+            boolean was = structures.has("Portal Room");
             search(Level.OVERWORLD, t, 1);
             if (!was) WORKER.submit(() -> portalTask(true)); // queued after the search on the same worker
             return;

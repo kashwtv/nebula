@@ -2,5 +2,6 @@
   "key.categories.nebula": "Nebula",
   "key.nebula.open": "Open Nebula Panel",
   "key.nebula.hud": "Edit HUD Layout",
-  "key.nebula.zoom": "Zoom"
+  "key.nebula.zoom": "Zoom",
+  "key.nebula.autobuild": "Open Auto Build"
 }
