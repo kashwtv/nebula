@@ -6,7 +6,7 @@ public final class SpeedHud extends StatHud {
     public final ModeSetting unit = add(new ModeSetting("Unit", "b/s", "b/s", "km/h"));
 
     public SpeedHud() {
-        super("Speed", "How fast you're moving.", 0.0f, 0.48f);
+        super("Speedometer", "How fast you're moving.", 0.0f, 0.48f);
     }
 
     @Override

@@ -46,6 +46,25 @@ public final class ClientEvents {
         }
     }
 
+    /** Modules that hold movement/attack keys for you: switched off when you leave a world. */
+    private static final Class<?>[] KEY_HOLDERS = {
+            dev.nebula.module.movement.AutoWalk.class, dev.nebula.module.player.Copycat.class, dev.nebula.module.player.Twerk.class,
+            dev.nebula.module.player.AutoMine.class, dev.nebula.module.player.Dance.class, dev.nebula.module.combat.AutoShield.class,
+            dev.nebula.module.player.AutoRightClick.class};
+
+    /** Leaving a world: turn off key-holding modules and release every key we may have pressed. */
+    @SubscribeEvent
+    public static void onLogout(net.minecraftforge.client.event.ClientPlayerNetworkEvent.LoggingOut e) {
+        for (Module m : ModuleManager.MODULES) {
+            for (Class<?> c : KEY_HOLDERS) {
+                if (c.isInstance(m) && m.isEnabled() && m.bindMode != 2) {
+                    try { m.setEnabled(false); } catch (Throwable t) { Nebula.LOG.warn("disable {} on logout failed", m.name, t); }
+                }
+            }
+        }
+        net.minecraft.client.KeyMapping.releaseAll();
+    }
+
     @SubscribeEvent
     public static void onKey(InputEvent.Key e) {
         Minecraft mc = Minecraft.getInstance();

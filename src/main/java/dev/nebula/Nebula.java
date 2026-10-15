@@ -22,5 +22,7 @@ public final class Nebula {
         if (FMLEnvironment.dist == Dist.CLIENT) {
             NebulaClient.init(FMLJavaModLoadingContext.get().getModEventBus());
         }
+        // Dev-only Structure Finder accuracy harness (compares against /locate); inert in the release jar.
+        if (!FMLEnvironment.production) net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(dev.nebula.structure.LocateHarness.class);
     }
 }

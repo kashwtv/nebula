@@ -27,10 +27,80 @@ public final class DevAutomation {
 
     private DevAutomation() {}
 
+    private static boolean selfTested;
+
+    /** Dev self-test (-Dnebula.selftest=true): once at the title screen, toggles every module on/off with no world loaded. */
+    private static void selfTest(Minecraft mc) {
+        if (selfTested || !(Boolean.getBoolean("nebula.selftest") || Files.exists(mc.gameDirectory.toPath().resolve("nebula_selftest"))) || mc.screen == null) return;
+        selfTested = true;
+        int fails = 0;
+        for (Module m : ModuleManager.MODULES) {
+            boolean was = m.isEnabled();
+            try {
+                m.setEnabled(!was);
+                m.update();
+                m.setEnabled(was);
+            } catch (Throwable t) {
+                fails++;
+                Nebula.LOG.error("SELFTEST toggle failed: {}", m.name, t);
+            }
+        }
+        try {
+            for (Module m : ModuleManager.MODULES) if (m.name.equals("Auto Walk") || m.name.equals("Twerk") || m.name.equals("Dance")) m.setEnabled(true);
+            ClientEvents.onLogout(null);
+            long still = ModuleManager.MODULES.stream().filter(m -> (m.name.equals("Auto Walk") || m.name.equals("Twerk") || m.name.equals("Dance")) && m.isEnabled()).count();
+            if (still > 0 || mc.options.keyUp.isDown() || mc.options.keyShift.isDown()) { fails++; Nebula.LOG.error("SELFTEST logout release failed"); }
+            else Nebula.LOG.info("SELFTEST logout release OK");
+        } catch (Throwable t) {
+            fails++;
+            Nebula.LOG.error("SELFTEST logout handler failed", t);
+        }
+        try {
+            mc.setScreen(new ClickGui());
+            Nebula.LOG.info("SELFTEST ClickGui opened");
+        } catch (Throwable t) {
+            fails++;
+            Nebula.LOG.error("SELFTEST ClickGui failed", t);
+        }
+        Nebula.LOG.info("SELFTEST done: {} modules, {} failures", ModuleManager.MODULES.size(), fails);
+    }
+
+    /** Dev: run/nebula_structtest lists seeds; creates a fresh world per seed so LocateHarness can compare against /locate. */
+    private static int stDbg;
+
+    private static void structTest(Minecraft mc) {
+        Path f = mc.gameDirectory.toPath().resolve("nebula_structtest");
+        if (!Files.exists(f)) return;
+        try {
+            if (dev.nebula.structure.LocateHarness.DONE && mc.level != null) {
+                dev.nebula.structure.LocateHarness.DONE = false;
+                mc.level.disconnect();
+                mc.clearLevel(new net.minecraft.client.gui.screens.GenericDirtMessageScreen(net.minecraft.network.chat.Component.literal("structtest")));
+                mc.setScreen(new net.minecraft.client.gui.screens.TitleScreen());
+                return;
+            }
+            if (++stDbg % 200 == 0) Nebula.LOG.info("STRUCTTEST waiting: level={} screen={}", mc.level != null, mc.screen == null ? null : mc.screen.getClass().getName());
+            if (mc.level != null || !(mc.screen instanceof net.minecraft.client.gui.screens.TitleScreen || mc.screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen)) return;
+            List<String> seeds = new java.util.ArrayList<>(Files.readAllLines(f).stream().map(String::trim).filter(x -> !x.isEmpty()).toList());
+            if (seeds.isEmpty()) { Files.delete(f); Nebula.LOG.info("STRUCTTEST all seeds done"); mc.stop(); return; }
+            String seed = seeds.remove(0);
+            Files.write(f, seeds.isEmpty() ? List.of(" ") : seeds);
+            Nebula.LOG.info("STRUCTTEST creating world for seed {}", seed);
+            var settings = new net.minecraft.world.level.LevelSettings("structtest_" + seed + "_" + System.currentTimeMillis(), net.minecraft.world.level.GameType.CREATIVE, false,
+                    net.minecraft.world.Difficulty.PEACEFUL, true, new net.minecraft.world.level.GameRules(), net.minecraft.world.level.WorldDataConfiguration.DEFAULT);
+            mc.createWorldOpenFlows().createFreshLevel(settings.levelName(), settings, new net.minecraft.world.level.levelgen.WorldOptions(Long.parseLong(seed), true, false),
+                    ra -> ra.registryOrThrow(net.minecraft.core.registries.Registries.WORLD_PRESET).getHolderOrThrow(net.minecraft.world.level.levelgen.presets.WorldPresets.NORMAL).value().createWorldDimensions());
+        } catch (Exception ex) {
+            Nebula.LOG.error("STRUCTTEST controller failed", ex);
+        }
+    }
+
     @SubscribeEvent
     public static void onTick(TickEvent.ClientTickEvent e) {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getInstance();
+        selfTest(mc);
+        structTest(mc);
         if (mc.player == null || mc.level == null) return;
         if (++poll % 10 == 0) {
             Path f = mc.gameDirectory.toPath().resolve("nebula_cmd.txt");

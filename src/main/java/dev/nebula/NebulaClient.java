@@ -33,6 +33,7 @@ public final class NebulaClient {
         modBus.addListener(NebulaClient::onSetup);
         modBus.addListener(Shaders::onRegister);
         MinecraftForge.EVENT_BUS.register(ClientEvents.class);
+        MinecraftForge.EVENT_BUS.register(ChatCommands.class);
         if (!net.minecraftforge.fml.loading.FMLEnvironment.production) MinecraftForge.EVENT_BUS.register(DevAutomation.class);
         for (Module m : ModuleManager.MODULES) {
             if (hasSubscribers(m.getClass())) MinecraftForge.EVENT_BUS.register(m);

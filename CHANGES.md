@@ -1,0 +1,262 @@
+# Nebula changes
+
+Built against the unchanged gradle.properties: Minecraft 1.20.1, Forge 47.4.10, official 1.20.1 mappings, Java 17.
+
+## Totals
+
+- Combat: 22 modules (6 new)
+- Movement: 33 modules (22 new)
+- Visuals: 38 modules (21 new)
+- World: 8 modules (1 new)
+- Player: 27 modules (18 new)
+- Hud: 54 modules (37 new)
+- Client: 18 modules (14 new)
+- **Total: 200 modules (119 new, 81 existing)**
+
+## v2 (2026-10-15)
+
+- **Structure Finder (new, World):** nearest N of every vanilla 1.20.1 structure. Overworld: stronghold, village (plains/desert/savanna/snowy/taiga), ocean monument, woodland mansion, ancient city, desert & jungle temple, igloo, swamp hut, pillager outpost, shipwreck (+beached), ocean ruins (warm/cold), buried treasure, mineshaft (+mesa), trail ruins, ruined portal (all 6 variants). Nether: fortress, bastion remnant, nether ruined portal, nether fossil. End: end city. (Trial chambers are 1.21, not included.)
+  - Singleplayer: uses the integrated server's own generator, structure state and template manager (same data as /locate), queried on the server thread.
+  - Multiplayer: `.seed <seed>` then it rebuilds the vanilla *Default* world offline from the game's own worldgen data (noise settings, multi-noise biome source, structure sets, template pools, structure NBTs, biome tags) and runs the same checks world generation does: RandomSpread / ConcentricRings placement, frequency + exclusion zones, the structure set's weighted pick, and the structure's biome/terrain check. If that data can't be built it falls back to grid-only positions marked **approx**.
+  - Settings: Per Type (1-10), Search Rings, Beams, Tracers, Render Nearest Only, Auto Refresh (re-search after moving 512 blocks).
+  - Chat commands (local, never sent to the server): `.seed [seed]`, `.find <type|all> [n]`, `.find list`, `.structures` / `.sf` opens the panel (dimension tabs, Search, seed box, click a row to pin its beam; Nether rows also show overworld coords).
+- **Kill Aura synced with Reach:** with Reach on, Kill Aura's range is your actual entity reach (the `forge:entity_reach` attribute Reach sets), not its own Range. With Reach off it uses Range as before. In both cases it is clamped so it never targets past your current entity reach.
+- **Nebula Updater (part of this project, `updater/`):** `nebula-updater.jar` + `Nebula Updater.bat`, config `updater.json`; see `updater/README.md`. The public repo will be **kashwtv/nebula**, with GitHub Releases hosting `nebula*.jar`; the updater's default URL is `https://api.github.com/repos/kashwtv/nebula/releases/latest`. `.github/workflows/release.yml` builds the mod jar and the updater on `v*` tags and attaches both to the release.
+- Dev only: `run/nebula_structtest` (list of seeds) makes the dev client create a world per seed and compare the finder against the server's /locate (`LocateHarness`). Inert in the release jar.
+
+## Highlights
+- **Reach (new, Combat):** Entity Reach 3-6, Block Reach 3-6, Change Block Reach. Uses Forge ENTITY_REACH / BLOCK_REACH transient attribute modifiers on your own player, removed on disable. Kill Aura's range stretches to it. The server checks reach with its own attributes, so on your server also run e.g. `/attribute <you> forge:entity_reach base set 6` and `/attribute <you> forge:block_reach base set 6`, or long hits get dropped by the server.
+- **Kill Aura (reworked):** filters Players/Hostiles/Neutrals/Animals/Invisibles (friends always excluded), Priority Angle/Distance/Health, FOV up to 360, eased rotation with Aim Speed, Timing Cooldown (Min Charge) or CPS with Randomness, Require Weapon, Rotate toggle, Target HUD now shows the aura's target.
+- **Flight (reworked):** modes Vanilla/Motion/Glide/Jetpack, Speed, Vertical Speed, Acceleration easing, Glide Fall, Jetpack Thrust, Sprint Boost, Anti Kick (vanilla floating-kick avoidance: small dip every 2 s), double-tap jump off, saves and restores mayfly/flying/fly speed.
+- **Movement fixes:** Speed (Ground/Hop/Strafe Hop, acceleration, Speed potion aware, pause while sneaking), Step (restores your original step height; only on ground), Spider (eased climb, sneak to cling), Jesus (Bounce mode, rise speed, can jump off the surface), No Fall (Spoof/Packet, gliding option, clean disable), No Slow (Keep Speed %, Keep Sprint), Parkour (edge lead, min drop, only sprinting), Safe Walk (lookahead, safe drop, no sneak while jumping), Auto Walk (Smart mode hops steps and stops at drops/liquids, sprint, pause in menus; no longer releases a W key you're really holding).
+- **Config name clash fixed:** the Speed HUD and Speed module (and the Reach HUD and new Reach module) shared one config key. The HUDs are now named "Speedometer" and "Reach Display". Their old saved HUD positions won't carry over.
+- **Troll modules:** Derp, Copycat, Dance, Twerk.
+- **Dev self-test:** DevAutomation (dev workspace only, never in the release jar) toggles every module at the title screen when `run/nebula_selftest` exists.
+
+## Modules by category
+
+### Combat (22)
+- Aim Assist: Speed, FOV, Range, Aim At, Priority, Vertical, Only While Clicking, Weapon Only, Through Walls, Sticky Target, Players, Hostile Mobs, Passive Mobs, Invisibles
+- Triggerbot: Sword Charge, Axe Charge, Other Charge, Crits, Min Delay, Max Delay, Weapon Only, Players, Hostile Mobs, Passive Mobs, Invisibles, Pause While Using
+- Bow Aim: Speed, FOV, Range, Lead Moving Targets, Through Walls, Players, Hostile Mobs, Passive Mobs
+- Auto Totem: Mode, Health, Delay
+- Velocity: Horizontal, Vertical, Chance
+- W-Tap: Length, Chance
+- Auto Weapon: Prefer
+- Kill Aura **[CHANGED]**: Range, FOV, Priority, Aim Speed, Timing, Min Charge, CPS, Randomness, Players, Hostiles, Neutrals, Animals, Invisibles, Require Weapon, Swing Only When Aimed, Through Walls, Rotate
+- Criticals: Mode
+- Auto Clicker: Min CPS, Max CPS, Respect Cooldown, Only On Entities
+- Auto Log: Health, Only Without Totems, Only If Player Near
+- Auto Gap: Below Health, Prefer Enchanted
+- Auto Bow: Release At
+- Auto XP: Repair Below, Delay, Only While Sneaking
+- Surround: Blocks Per Tick, Floor, Off When You Move
+- Auto Trap: Mode, Range, Blocks Per Tick
+- Reach **[NEW]**: Entity Reach, Block Reach, Change Block Reach
+- Auto Pot **[NEW]**: Health, Delay
+- Auto Shield **[NEW]**: Range
+- No Miss Cooldown **[NEW]**
+- Shield Breaker **[NEW]**
+- Target Strafe **[NEW]**: Radius, Only While Jump Held
+
+### Movement (33)
+- Sprint: Toggle Sneak
+- Flight **[CHANGED]**: Mode, Speed, Vertical Speed, Acceleration, Glide Fall, Jetpack Thrust, Sprint Boost, Anti Kick, Double-Tap Jump Off, Stop On Disable
+- Speed **[CHANGED]**: Mode, Speed, Acceleration, Air Friction, Pause While Sneaking, Stop On Release
+- No Fall **[CHANGED]**: Mode, Min Fall, While Gliding
+- Step **[CHANGED]**: Height, Only On Ground, Sneak Disables
+- Spider **[CHANGED]**: Climb Speed, Acceleration, Sneak To Cling
+- No Slow **[CHANGED]**: Using Items, Sneaking, Keep Speed, Keep Sprint
+- Safe Walk **[CHANGED]**: Only Backwards, Only Holding Blocks, Lookahead, Safe Drop
+- Parkour **[CHANGED]**: Edge Lead, Min Drop, Only Sprinting
+- Auto Walk **[CHANGED]**: Mode, Sprint, Pause In Menus
+- Jesus **[CHANGED]**: Mode, Lava, Rise Speed
+- Long Jump **[NEW]**: Boost, Decay, Extra Height, Auto Jump, Disable On Land
+- High Jump **[NEW]**: Height, No Fall From Jump
+- Air Jump **[NEW]**: Max Jumps
+- Omni Sprint **[NEW]**: Respect Hunger
+- Elytra Fly **[NEW]**: Mode, Speed, Vertical Speed, Acceleration, Boost, Hover When Idle, Auto Start
+- Boat Fly **[NEW]**: Speed, Vertical Speed, Acceleration, Idle Fall, Boats Only, Face Camera
+- Fast Ladder **[NEW]**: Up Speed, Down Speed
+- Strafe **[NEW]**: Control, Only In Air, Stop On Release
+- Anti Levitation **[NEW]**
+- Anti Void **[NEW]**: Mode
+- Auto Jump **[NEW]**: Only While Moving
+- Sneak **[NEW]**
+- Entity Speed **[NEW]**: Speed
+- Fast Swim **[NEW]**: Speed, Vertical
+- Ice Speed **[NEW]**: Speed
+- No Jump Delay **[NEW]**
+- Reverse Step **[NEW]**: Max Drop
+- Scaffold **[NEW]**: Extend, Tower (Jump)
+- Auto MLG **[NEW]**: Min Fall
+- Auto Rocket **[NEW]**: Min Speed, Delay
+- Parachute **[NEW]**: Max Fall Speed, Open After
+- Wall Jump **[NEW]**: Push
+
+### Visuals (38)
+- ESP: Style, Color, Players, Hostile Mobs, Passive Mobs, Items, Tracers, Health Bar, Names, Armor, Box Fill, Range, Hostile Color
+- Fullbright: Mode, Brightness
+- Trajectories: Color, Landing Marker, Highlight Hit
+- Crosshair: Style, Color, Length, Gap, Thickness, Outline, Opacity, Center Dot, Dynamic Spread, Show In 3rd Person
+- Hit Marker: Color, Size, Sound
+- Damage Numbers: Color, Size, Range, Show Heals, Through Walls
+- Kill Effects: Effect, Sound
+- Block Outline: Color, Fill, Fill Opacity, Breathing, Line Opacity
+- Motion Blur: Strength
+- Trails: Particle, Color, Density, Dust Size, Only Moving
+- Jump Circles: Color, Size, Duration
+- Hit Particles: Mode, Color, Amount
+- China Hat: Color, Radius, Height, Opacity, First Person
+- Clean View: No Fire, No Water, No Suffocation, No Pumpkin, No Vignette, No Portal, No Spyglass
+- Low HP Warning: Below HP, Intensity
+- Zoom: Zoom, Key Mode, Animation Speed, Smooth Camera, Scroll Adjust
+- Module List: Sort, Text Color, Suffixes, Row Background, Accent Bar, Row Height, Background Opacity
+- Chunk Borders **[NEW]**: Color, Radius, Height
+- Particle Multiplier **[NEW]**: Multiplier, Crit, Sharpness, Every Hit
+- Custom FOV **[NEW]**: FOV, Static (No Sprint Zoom)
+- Freelook **[NEW]**: Third Person
+- Glow **[NEW]**: Players, Hostiles, Passives, Items, Range
+- Hitboxes **[NEW]**
+- Item ESP **[NEW]**: Color, Labels, Rare Only, Range
+- Light Overlay **[NEW]**: Radius
+- Logout Spots **[NEW]**
+- Nametags **[NEW]**: Health, Distance, Mobs Too, Always Show
+- Anti Blind **[NEW]**: Blindness, Darkness, Nausea
+- No Bob **[NEW]**: No View Bob, No Hurt Tilt
+- Hide HUD Clutter **[NEW]**: Boss Bars, Scoreboard, Titles, Potion Icons
+- TNT Timer **[NEW]**
+- Tracers **[NEW]**: Players, Hostiles, Passives, Distance Color, Color, Range, Width
+- View Model **[NEW]**: X, Y, Z, Scale, Tilt, Swing
+- Shader FX **[NEW]**: Effect
+- Better Tooltips **[NEW]**: Durability, Food Values, Inventory Total
+- Hide Hand **[NEW]**: Main Hand, Off Hand
+- Self Nametag **[NEW]**
+- Break Progress **[NEW]**
+
+### World (8)
+- Block Finder: Blocks, Range, Scan Speed, Max Shown, Fill, Tracers, Through Walls
+- Storage Finder: Chests, Barrels, Shulkers, Ender Chests, Hoppers / Droppers, Furnaces, Spawners, Fill, Tracers, Base Finder, Base Threshold
+- Portal Finder: Range, Beams, Highlight Blocks, Notify
+- Freecam: Speed
+- Breadcrumbs: Color, Length, Fade After, Through Walls
+- Ambience: Time, Custom Time, Cycle Speed, Clear Weather
+- Atmosphere: Fog Color, Tint, Fog, Fog Distance
+- Waypoints **[NEW]**: Last Death, World Spawn
+
+### Player (27)
+- Fast Place: Delay, Blocks, Crystals, XP Bottles, Everything
+- Fast Break: Delay
+- Auto Tool: Swap Back, Save Low Tools
+- Auto Armor: Delay, Keep Elytra
+- Auto Eat: Eat Below, Allow Gapples, Pause In Combat
+- Chest Stealer: Delay, Random Delay, Close When Done
+- Inventory Move: Jump
+- Auto Respawn
+- Anti AFK: Interval, Jump, Turn, Swing
+- Derp **[NEW]**: Mode, Speed, Pause While Using
+- Copycat **[NEW]**: Find Range, Follow Distance, Turn Speed, Copy Look Direction, Sprint To Catch Up
+- Dance **[NEW]**: Tempo, Sneak, Jump, Spin
+- Auto Bonemeal **[NEW]**
+- Auto Breed **[NEW]**: Range
+- Auto Drop **[NEW]**: Rotten Flesh, Seeds, Cobble/Diorite/Granite/Andesite, Dirt/Gravel, Poison Potato/Spider Eye
+- Auto Farm **[NEW]**: Range, Replant
+- Auto Fish **[NEW]**: Recast Delay
+- Auto Mine **[NEW]**
+- Auto Replenish **[NEW]**: Threshold
+- Auto Shear **[NEW]**: Range
+- Fast Use **[NEW]**: Delay
+- Middle Click Pearl **[NEW]**
+- Auto Right Click **[NEW]**: CPS
+- Elytra Swap **[NEW]**
+- No Break Delay **[NEW]**
+- Auto Torch **[NEW]**: Max Light
+- Twerk **[NEW]**: Speed
+
+### Hud (54)
+- Watermark: Version, FPS, Time, Server
+- Coordinates: Decimals, Nether / Overworld, Facing, Biome, Chunk
+- Armor: Layout, Durability, Held Items, Bars, Low Warning
+- Health: Length, Segmented, Hunger, Armor, Damage Flash, Hide Vanilla Bars
+- FPS: Graph
+- CPS: Right Click
+- Ping
+- Speedometer **[CHANGED]**: Unit
+- Reach Display **[CHANGED]**
+- Clock: Format, Seconds, Game Time
+- Compass: Length, View Angle, Degrees, ESP Dots
+- Potions: Bars, Hide Vanilla, Blink When Ending
+- Keystrokes: Key Size, Press Color, Mouse, Space Bar, CPS
+- Target HUD **[CHANGED]**: 3D Model, Armor, HP Difference
+- Inventory: Slot Backgrounds
+- Item Counter: Layout, Hide Empty, Totems, Golden Apples, Ender Pearls, Arrows, XP Bottles, Crystals, Obsidian
+- Session Stats: Combo, Hits
+- Arrows **[NEW]**
+- Biome **[NEW]**
+- Chunk **[NEW]**
+- Day Counter **[NEW]**
+- Dimension **[NEW]**
+- Direction **[NEW]**
+- Durability **[NEW]**
+- Entities **[NEW]**
+- Fall Distance **[NEW]**
+- Food **[NEW]**
+- Light Level **[NEW]**
+- Looking At **[NEW]**
+- Memory **[NEW]**
+- Moon Phase **[NEW]**
+- Nearby Players **[NEW]**
+- Nether Coords **[NEW]**
+- Radar **[NEW]**: Size, Range, Mobs
+- Rotation **[NEW]**
+- Server **[NEW]**
+- TPS **[NEW]**
+- Weather **[NEW]**
+- World Time **[NEW]**
+- Experience **[NEW]**
+- Absorption **[NEW]**
+- Armor Points **[NEW]**
+- Blocks **[NEW]**
+- Combo **[NEW]**
+- Difficulty **[NEW]**
+- Elytra **[NEW]**
+- Game Mode **[NEW]**
+- K/D **[NEW]**
+- Vertical Speed **[NEW]**
+- Playtime **[NEW]**
+- Movement State **[NEW]**
+- Target Distance **[NEW]**
+- Lag Detector **[NEW]**
+- Ore Hint **[NEW]**
+
+### Client (18)
+- Anti Spam **[NEW]**: Window
+- Armor Alert **[NEW]**: Warn Below
+- Auto Reconnect **[NEW]**: Delay
+- Chat Timestamps **[NEW]**: Seconds
+- Death Coords **[NEW]**
+- Unfocused FPS **[NEW]**: Background FPS
+- Visual Range **[NEW]**: Leave Messages, Sound
+- Death Screenshot **[NEW]**
+- Mention Notify **[NEW]**
+- Chat Logger **[NEW]**
+- Creeper Alert **[NEW]**: Range
+- Hit Sound **[NEW]**: Sound, Volume
+- Pickup Notify **[NEW]**
+- Projectile Alert **[NEW]**
+- Click GUI: Accent, UI Scale, Font, Blur, Blur Strength, Dim, Particles, Sounds
+- HUD Editor: Snapping, Grid
+- HUD Style: Opacity, Corner Radius, Border, Shadow, Accent Line, Text Shadow
+- Notifications
+
+## Other changed files
+- util/Move.java (new movement helper)
+- module/ModuleManager.java (registration)
+- module/hud/TargetHud.java (Kill Aura target)
+- DevAutomation.java (self-test)
+- module/hud/ReachHud.java, SpeedHud.java (renamed)
+
+## Stuck-keys fix
+- ClientEvents: on ClientPlayerNetworkEvent.LoggingOut, Auto Walk, Copycat, Twerk, Auto Mine, Dance, Auto Shield and Auto Right Click are switched off (unless bound as "Always") and KeyMapping.releaseAll() releases every held key.
+- Twerk, Dance and Copycat now pause and let go of their keys while a menu is open. Auto Mine, Auto Walk and Auto Shield already did this.
+- The dev self-test now also checks the logout release.

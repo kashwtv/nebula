@@ -37,6 +37,8 @@ public final class TargetHud extends HudModule {
     }
 
     private LivingEntity current() {
+        var ka = dev.nebula.module.ModuleManager.get(dev.nebula.module.combat.KillAura.class);
+        if (ka != null && ka.target() != null) return ka.target();
         if (Combat.lastTarget != null && Combat.lastTarget.isAlive() && Combat.sinceHit() < 4000) return Combat.lastTarget;
         if (mc().hitResult instanceof EntityHitResult e && e.getEntity() instanceof LivingEntity le) return le;
         return null;

@@ -5,7 +5,7 @@ import dev.nebula.util.Combat;
 
 public final class ReachHud extends StatHud {
     public ReachHud() {
-        super("Reach", "Distance of your last hit.", 0.0f, 0.54f);
+        super("Reach Display", "Distance of your last hit.", 0.0f, 0.54f);
         valueColor.index = 2; // Status
     }
 
